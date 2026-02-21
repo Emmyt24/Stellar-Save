@@ -100,6 +100,7 @@ impl PayoutRecord {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;

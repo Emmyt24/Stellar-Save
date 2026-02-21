@@ -152,7 +152,7 @@ where
 
     // mock auth as passed-in address
     client.env.mock_auths(&[MockAuth {
-        address: &caller,
+        address: caller,
         invoke,
     }]);
 }
