@@ -1,0 +1,12 @@
+/home/henry-peters/Desktop/Stellar-Save/target/debug/deps/serde-36a22b2d2a0edbe6.d: /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-252a9bbeccb60cd9/out/private.rs
+
+/home/henry-peters/Desktop/Stellar-Save/target/debug/deps/libserde-36a22b2d2a0edbe6.rmeta: /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-252a9bbeccb60cd9/out/private.rs
+
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-252a9bbeccb60cd9/out/private.rs:
+
+# env-dep:OUT_DIR=/home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-252a9bbeccb60cd9/out
