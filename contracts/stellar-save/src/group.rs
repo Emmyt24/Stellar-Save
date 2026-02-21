@@ -10,6 +10,21 @@ pub enum Status {
     Completed,
 }
 
+/// Aggregated statistics for a group.
+/// Provides a snapshot of the group's current state.
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct GroupStats {
+    /// Total amount contributed by all members in stroops.
+    pub total_contributed: i128,
+    /// Total amount paid out to members in stroops.
+    pub total_paid_out: i128,
+    /// Number of currently active members in the group.
+    pub active_members: u32,
+    /// Completion percentage (0-100).
+    pub completion_percentage: u32,
+}
+
 /// Core Group data structure representing a rotational savings group (ROSCA).
 /// 
 /// A Group manages the configuration and state of a savings circle where members
@@ -207,6 +222,35 @@ impl Group {
             && self.cycle_duration > 0
             && self.max_members >= 2
             && self.current_cycle <= self.max_members
+    }
+
+    /// Calculates aggregated statistics for this group.
+    /// 
+    /// # Arguments
+    /// * `total_contributed` - Total amount contributed by all members
+    /// * `total_paid_out` - Total amount paid out to members
+    /// * `active_members` - Number of currently active members
+    /// 
+    /// Returns a GroupStats struct with the calculated values.
+    pub fn calculate_stats(
+        &self,
+        total_contributed: i128,
+        total_paid_out: i128,
+        active_members: u32,
+    ) -> GroupStats {
+        // Calculate completion percentage based on cycles completed
+        let completion_percentage = if self.max_members > 0 {
+            ((self.current_cycle as u64 * 100) / self.max_members as u64) as u32
+        } else {
+            0
+        };
+
+        GroupStats {
+            total_contributed,
+            total_paid_out,
+            active_members,
+            completion_percentage,
+        }
     }
 }
 
@@ -438,5 +482,75 @@ mod tests {
         
         let group = Group::new(1, creator, 10_000_000, 604800, 5, 1234567890);
         assert!(group.validate());
+    }
+
+    #[test]
+    fn test_calculate_stats() {
+        let env = Env::default();
+        let creator = Address::generate(&env);
+        
+        let group = Group::new(1, creator, 10_000_000, 604800, 5, 1234567890);
+        
+        // Calculate stats at the start (cycle 0, no contributions/payouts)
+        let stats = group.calculate_stats(0, 0, 5);
+        
+        assert_eq!(stats.total_contributed, 0);
+        assert_eq!(stats.total_paid_out, 0);
+        assert_eq!(stats.active_members, 5);
+        assert_eq!(stats.completion_percentage, 0); // 0/5 = 0%
+    }
+
+    #[test]
+    fn test_calculate_stats_mid_cycle() {
+        let env = Env::default();
+        let creator = Address::generate(&env);
+        
+        let mut group = Group::new(1, creator, 10_000_000, 604800, 5, 1234567890);
+        group.current_cycle = 2; // 2 cycles completed
+        
+        // Simulate: 2 cycles * 5 members * 10_000_000 = 100_000_000 total contributed
+        // 2 payouts * 50_000_000 = 100_000_000 total paid out
+        let stats = group.calculate_stats(100_000_000, 100_000_000, 5);
+        
+        assert_eq!(stats.total_contributed, 100_000_000);
+        assert_eq!(stats.total_paid_out, 100_000_000);
+        assert_eq!(stats.active_members, 5);
+        assert_eq!(stats.completion_percentage, 40); // 2/5 = 40%
+    }
+
+    #[test]
+    fn test_calculate_stats_completed() {
+        let env = Env::default();
+        let creator = Address::generate(&env);
+        
+        let mut group = Group::new(1, creator, 10_000_000, 604800, 5, 1234567890);
+        group.current_cycle = 5; // All 5 cycles completed
+        group.status = Status::Completed;
+        
+        // 5 cycles * 5 members * 10_000_000 = 250_000_000 total contributed
+        // 5 payouts * 50_000_000 = 250_000_000 total paid out
+        let stats = group.calculate_stats(250_000_000, 250_000_000, 5);
+        
+        assert_eq!(stats.total_contributed, 250_000_000);
+        assert_eq!(stats.total_paid_out, 250_000_000);
+        assert_eq!(stats.active_members, 5);
+        assert_eq!(stats.completion_percentage, 100); // 5/5 = 100%
+    }
+
+    #[test]
+    fn test_calculate_stats_partial_contribution() {
+        let env = Env::default();
+        let creator = Address::generate(&env);
+        
+        let group = Group::new(1, creator, 10_000_000, 604800, 5, 1234567890);
+        
+        // Not all members have contributed in cycle 0
+        // Only 3 members contributed: 3 * 10_000_000 = 30_000_000
+        let stats = group.calculate_stats(30_000_000, 0, 3);
+        
+        assert_eq!(stats.total_contributed, 30_000_000);
+        assert_eq!(stats.total_paid_out, 0);
+        assert_eq!(stats.active_members, 3);
+        assert_eq!(stats.completion_percentage, 0);
     }
 }

@@ -20,7 +20,7 @@ pub mod payout;
 
 // Re-export for convenience
 pub use contribution::ContributionRecord;
-pub use group::Group;
+pub use group::{Group, GroupStats};
 pub use payout::PayoutRecord;
 use soroban_sdk::{contract, contractimpl, Env};
 
