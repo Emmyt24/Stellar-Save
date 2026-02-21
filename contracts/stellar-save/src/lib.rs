@@ -22,3 +22,14 @@ pub mod payout;
 pub use contribution::ContributionRecord;
 pub use group::Group;
 pub use payout::PayoutRecord;
+use soroban_sdk::{contract, contractimpl, Env};
+
+#[contract]
+pub struct StellarSaveContract;
+
+#[contractimpl]
+impl StellarSaveContract {
+    pub fn hello(env: Env) -> soroban_sdk::Symbol {
+        soroban_sdk::symbol_short!("hello")
+    }
+}
