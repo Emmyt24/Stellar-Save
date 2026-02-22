@@ -177,6 +177,24 @@ impl StellarSaveContract {
         // 7. Return Group ID
         Ok(group_id)
     }
+
+    /// Retrieves the details of a specific savings group.
+    /// 
+    /// # Arguments
+    /// * `group_id` - The unique identifier of the group to retrieve.
+    /// 
+    /// # Returns
+    /// Returns the Group struct if found, or StellarSaveError::GroupNotFound if not.
+    pub fn get_group(env: Env, group_id: u64) -> Result<Group, StellarSaveError> {
+        // Generate the storage key for the group data
+        let key = StorageKeyBuilder::group_data(group_id);
+
+        // Attempt to load group from persistent storage
+        env.storage()
+            .persistent()
+            .get::<_, Group>(&key)
+            .ok_or(StellarSaveError::GroupNotFound)
+    }
 }
 
 
@@ -193,4 +211,39 @@ fn test_group_id_uniqueness() {
     assert_eq!(id1, 1);
     assert_eq!(id2, 2);
     assert_ne!(id1, id2);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+
+    #[test]
+    fn test_get_group_success() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        let creator = Address::generate(&env);
+
+        // Manually store a group to test retrieval
+        let group_id = 1;
+        let group = Group::new(group_id, creator.clone(), 100, 3600, 5, 12345);
+        
+        // This simulates the storage state after create_group is called
+        env.storage().persistent().set(&StorageKeyBuilder::group_data(group_id), &group);
+
+        let retrieved_group = client.get_group(&group_id);
+        assert_eq!(retrieved_group.id, group_id);
+        assert_eq!(retrieved_group.creator, creator);
+    }
+
+    #[test]
+    #[should_panic(expected = "Status(ContractError(1001))")] // 1001 is GroupNotFound
+    fn test_get_group_not_found() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+
+        client.get_group(&999); // ID that doesn't exist
+    }
 }
