@@ -36,7 +36,7 @@ pub use payout::PayoutRecord;
 pub use status::{GroupStatus, StatusError};
 pub use storage::{StorageKey, StorageKeyBuilder};
 pub use events::EventEmitter;
-use soroban_sdk::{contract, contractimpl, Env};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Vec};
 
 #[contract]
 pub struct StellarSaveContract;
@@ -335,6 +335,74 @@ impl StellarSaveContract {
         Ok(groups)
     }
 
+    /// Lists all member addresses for a specific group with pagination support.
+    /// 
+    /// Members are returned in join order (chronological sequence).
+    /// 
+    /// # Arguments
+    /// * `env` - Soroban environment
+    /// * `group_id` - Unique identifier of the group
+    /// * `offset` - Starting position in the member list (0-indexed)
+    /// * `limit` - Maximum number of members to return (capped at 100)
+    /// 
+    /// # Returns
+    /// Returns a vector of member addresses or an error:
+    /// - `Ok(Vec<Address>)` - List of member addresses (may be empty)
+    /// - `Err(StellarSaveError::GroupNotFound)` - Group doesn't exist
+    /// - `Err(StellarSaveError::InvalidState)` - Limit exceeds maximum allowed
+    /// 
+    /// # Examples
+    /// ```
+    /// // Get first 10 members
+    /// let members = list_group_members(env, 1, 0, 10)?;
+    /// 
+    /// // Get next 10 members
+    /// let more_members = list_group_members(env, 1, 10, 10)?;
+    /// ```
+    pub fn list_group_members(
+        env: Env,
+        group_id: u64,
+        offset: u32,
+        limit: u32,
+    ) -> Result<Vec<Address>, StellarSaveError> {
+        // 1. Validate limit parameter
+        const MAX_LIMIT: u32 = 100;
+        if limit > MAX_LIMIT {
+            return Err(StellarSaveError::InvalidState);
+        }
+        
+        // 2. Build storage key
+        let key = StorageKeyBuilder::group_members(group_id);
+        
+        // 3. Retrieve member list from storage
+        let members: Vec<Address> = env.storage()
+            .persistent()
+            .get(&key)
+            .ok_or(StellarSaveError::GroupNotFound)?;
+        
+        // 4. Handle edge cases
+        if limit == 0 {
+            return Ok(Vec::new(&env));
+        }
+        
+        let members_len = members.len();
+        if offset >= members_len {
+            return Ok(Vec::new(&env));
+        }
+        
+        // 5. Calculate slice bounds
+        let start = offset as usize;
+        let end = core::cmp::min(start + limit as usize, members_len);
+        
+        // 6. Create result vector with paginated members
+        let mut result = Vec::new(&env);
+        for i in start..end {
+            result.push_back(members.get(i).unwrap());
+        }
+        
+        Ok(result)
+    }
+
     /// Activates a group once minimum members have joined.
     /// 
     /// # Arguments
@@ -507,5 +575,176 @@ mod tests {
         
         let active_only = client.list_groups(&0, &10, &Some(GroupStatus::Active));
         assert_eq!(active_only.len(), 1);
+    }
+
+    // Task 2.1: Pagination boundary tests for list_group_members
+    
+    #[test]
+    fn test_list_group_members_offset_beyond_count() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        
+        // Setup: Create a group with 3 members
+        let group_id = 1;
+        let creator = Address::generate(&env);
+        let member1 = Address::generate(&env);
+        let member2 = Address::generate(&env);
+        
+        let mut members = Vec::new(&env);
+        members.push_back(creator.clone());
+        members.push_back(member1);
+        members.push_back(member2);
+        
+        // Store members directly
+        let key = StorageKeyBuilder::group_members(group_id);
+        env.storage().persistent().set(&key, &members);
+        
+        // Test: offset=10 is beyond the member count of 3
+        let result = client.list_group_members(&group_id, &10, &5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_list_group_members_limit_zero() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        
+        // Setup: Create a group with 3 members
+        let group_id = 1;
+        let creator = Address::generate(&env);
+        let member1 = Address::generate(&env);
+        let member2 = Address::generate(&env);
+        
+        let mut members = Vec::new(&env);
+        members.push_back(creator.clone());
+        members.push_back(member1);
+        members.push_back(member2);
+        
+        // Store members directly
+        let key = StorageKeyBuilder::group_members(group_id);
+        env.storage().persistent().set(&key, &members);
+        
+        // Test: limit=0 should return empty vector
+        let result = client.list_group_members(&group_id, &0, &0);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_list_group_members_offset_plus_limit_exceeds_total() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        
+        // Setup: Create a group with 5 members
+        let group_id = 1;
+        let mut members = Vec::new(&env);
+        for _ in 0..5 {
+            members.push_back(Address::generate(&env));
+        }
+        
+        // Store members directly
+        let key = StorageKeyBuilder::group_members(group_id);
+        env.storage().persistent().set(&key, &members);
+        
+        // Test: offset=3, limit=10 should return only 2 remaining members (indices 3 and 4)
+        let result = client.list_group_members(&group_id, &3, &10);
+        assert_eq!(result.len(), 2);
+        
+        // Verify the returned members are the correct ones
+        assert_eq!(result.get(0).unwrap(), members.get(3).unwrap());
+        assert_eq!(result.get(1).unwrap(), members.get(4).unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "Status(ContractError(1003))")] // 1003 is InvalidState
+    fn test_list_group_members_max_limit_enforcement() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        
+        // Setup: Create a group with some members
+        let group_id = 1;
+        let mut members = Vec::new(&env);
+        for _ in 0..10 {
+            members.push_back(Address::generate(&env));
+        }
+        
+        // Store members directly
+        let key = StorageKeyBuilder::group_members(group_id);
+        env.storage().persistent().set(&key, &members);
+        
+        // Test: limit=101 exceeds MAX_LIMIT of 100, should panic with InvalidState error
+        client.list_group_members(&group_id, &0, &101);
+    }
+}
+
+    // Task 3.1: Integration test for list_group_members
+    #[test]
+    fn test_list_group_members_integration() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        
+        // Setup: Create a group with 5 members in join order
+        let group_id = 1;
+        let mut members = Vec::new(&env);
+        let member_addresses: Vec<Address> = (0..5)
+            .map(|_| Address::generate(&env))
+            .collect();
+        
+        for addr in &member_addresses {
+            members.push_back(addr.clone());
+        }
+        
+        // Store members using the storage key builder
+        let key = StorageKeyBuilder::group_members(group_id);
+        env.storage().persistent().set(&key, &members);
+        
+        // Test 1: Retrieve all members (offset=0, limit=10)
+        let all_members = client.list_group_members(&group_id, &0, &10);
+        assert_eq!(all_members.len(), 5);
+        
+        // Verify join order is preserved
+        for i in 0..5 {
+            assert_eq!(all_members.get(i as u32).unwrap(), member_addresses[i]);
+        }
+        
+        // Test 2: Pagination - first page (offset=0, limit=2)
+        let page1 = client.list_group_members(&group_id, &0, &2);
+        assert_eq!(page1.len(), 2);
+        assert_eq!(page1.get(0).unwrap(), member_addresses[0]);
+        assert_eq!(page1.get(1).unwrap(), member_addresses[1]);
+        
+        // Test 3: Pagination - second page (offset=2, limit=2)
+        let page2 = client.list_group_members(&group_id, &2, &2);
+        assert_eq!(page2.len(), 2);
+        assert_eq!(page2.get(0).unwrap(), member_addresses[2]);
+        assert_eq!(page2.get(1).unwrap(), member_addresses[3]);
+        
+        // Test 4: Pagination - last page (offset=4, limit=2)
+        let page3 = client.list_group_members(&group_id, &4, &2);
+        assert_eq!(page3.len(), 1);
+        assert_eq!(page3.get(0).unwrap(), member_addresses[4]);
+        
+        // Test 5: Empty result when offset is beyond member count
+        let empty = client.list_group_members(&group_id, &10, &5);
+        assert_eq!(empty.len(), 0);
+        
+        // Test 6: Empty result when limit is 0
+        let empty2 = client.list_group_members(&group_id, &0, &0);
+        assert_eq!(empty2.len(), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Status(ContractError(1001))")] // 1001 is GroupNotFound
+    fn test_list_group_members_group_not_found() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        
+        // Test: Attempt to list members for a non-existent group
+        client.list_group_members(&999, &0, &10);
     }
 }
