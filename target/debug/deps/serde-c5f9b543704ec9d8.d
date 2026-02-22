@@ -1,0 +1,14 @@
+/home/henry-peters/Desktop/Stellar-Save/target/debug/deps/serde-c5f9b543704ec9d8.d: /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-f38b255d54569d39/out/private.rs
+
+/home/henry-peters/Desktop/Stellar-Save/target/debug/deps/libserde-c5f9b543704ec9d8.rlib: /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-f38b255d54569d39/out/private.rs
+
+/home/henry-peters/Desktop/Stellar-Save/target/debug/deps/libserde-c5f9b543704ec9d8.rmeta: /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-f38b255d54569d39/out/private.rs
+
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/henry-peters/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-f38b255d54569d39/out/private.rs:
+
+# env-dep:OUT_DIR=/home/henry-peters/Desktop/Stellar-Save/target/debug/build/serde-f38b255d54569d39/out
