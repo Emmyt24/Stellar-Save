@@ -255,6 +255,45 @@ impl StellarSaveContract {
             .ok_or(StellarSaveError::GroupNotFound)
     }
 
+    /// Checks if a member has already received their payout in a group.
+    /// 
+    /// # Arguments
+    /// * `group_id` - The unique identifier of the group.
+    /// * `member_address` - The address of the member to check.
+    /// 
+    /// # Returns
+    /// Returns true if the member has received their payout, false otherwise.
+    /// Returns an error if the group doesn't exist.
+    /// 
+    /// # Logic
+    /// Checks all cycles in the group to see if the member was a payout recipient.
+    /// In a ROSCA, each member receives exactly one payout during the group's lifecycle.
+    pub fn has_received_payout(
+        env: Env,
+        group_id: u64,
+        member_address: Address,
+    ) -> Result<bool, StellarSaveError> {
+        // Verify the group exists and get its current cycle
+        let group_key = StorageKeyBuilder::group_data(group_id);
+        let group = env.storage()
+            .persistent()
+            .get::<_, Group>(&group_key)
+            .ok_or(StellarSaveError::GroupNotFound)?;
+
+        // Check each cycle from 0 to current_cycle to see if member received payout
+        for cycle in 0..=group.current_cycle {
+            let recipient_key = StorageKeyBuilder::payout_recipient(group_id, cycle);
+            
+            if let Some(recipient) = env.storage().persistent().get::<_, Address>(&recipient_key) {
+                if recipient == member_address {
+                    return Ok(true);
+                }
+            }
+        }
+        
+        Ok(false)
+    }
+
     /// Deletes a group from storage.
     /// Only allowed if the caller is the creator and no members have joined yet.
     pub fn delete_group(env: Env, group_id: u64) -> Result<(), StellarSaveError> {
@@ -479,6 +518,122 @@ mod tests {
         let client = StellarSaveContractClient::new(&env, &contract_id);
 
         client.get_group(&999); // ID that doesn't exist
+    }
+
+    #[test]
+    fn test_has_received_payout_true() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        let creator = Address::generate(&env);
+        let member = Address::generate(&env);
+
+        // Create a group at cycle 2
+        let group_id = 1;
+        let mut group = Group::new(group_id, creator.clone(), 100, 3600, 5, 2, 12345);
+        group.current_cycle = 2;
+        
+        // Store the group
+        env.storage().persistent().set(&StorageKeyBuilder::group_data(group_id), &group);
+
+        // Store payout recipient for cycle 1 (member received payout)
+        let recipient_key = StorageKeyBuilder::payout_recipient(group_id, 1);
+        env.storage().persistent().set(&recipient_key, &member);
+
+        // Check if member has received payout
+        let has_received = client.has_received_payout(&group_id, &member);
+        assert_eq!(has_received, true);
+    }
+
+    #[test]
+    fn test_has_received_payout_false() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        let creator = Address::generate(&env);
+        let member = Address::generate(&env);
+        let other_member = Address::generate(&env);
+
+        // Create a group at cycle 2
+        let group_id = 1;
+        let mut group = Group::new(group_id, creator.clone(), 100, 3600, 5, 2, 12345);
+        group.current_cycle = 2;
+        
+        // Store the group
+        env.storage().persistent().set(&StorageKeyBuilder::group_data(group_id), &group);
+
+        // Store payout recipient for cycle 1 (other member received payout, not our member)
+        let recipient_key = StorageKeyBuilder::payout_recipient(group_id, 1);
+        env.storage().persistent().set(&recipient_key, &other_member);
+
+        // Check if member has received payout (should be false)
+        let has_received = client.has_received_payout(&group_id, &member);
+        assert_eq!(has_received, false);
+    }
+
+    #[test]
+    fn test_has_received_payout_no_payouts_yet() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        let creator = Address::generate(&env);
+        let member = Address::generate(&env);
+
+        // Create a group at cycle 0 (no payouts yet)
+        let group_id = 1;
+        let group = Group::new(group_id, creator.clone(), 100, 3600, 5, 2, 12345);
+        
+        // Store the group
+        env.storage().persistent().set(&StorageKeyBuilder::group_data(group_id), &group);
+
+        // Check if member has received payout (should be false - no payouts yet)
+        let has_received = client.has_received_payout(&group_id, &member);
+        assert_eq!(has_received, false);
+    }
+
+    #[test]
+    fn test_has_received_payout_multiple_cycles() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        let creator = Address::generate(&env);
+        let member1 = Address::generate(&env);
+        let member2 = Address::generate(&env);
+        let member3 = Address::generate(&env);
+
+        // Create a group at cycle 3
+        let group_id = 1;
+        let mut group = Group::new(group_id, creator.clone(), 100, 3600, 5, 2, 12345);
+        group.current_cycle = 3;
+        
+        // Store the group
+        env.storage().persistent().set(&StorageKeyBuilder::group_data(group_id), &group);
+
+        // Store payout recipients for multiple cycles
+        env.storage().persistent().set(&StorageKeyBuilder::payout_recipient(group_id, 0), &member1);
+        env.storage().persistent().set(&StorageKeyBuilder::payout_recipient(group_id, 1), &member2);
+        env.storage().persistent().set(&StorageKeyBuilder::payout_recipient(group_id, 2), &member3);
+
+        // Check each member
+        assert_eq!(client.has_received_payout(&group_id, &member1), true);
+        assert_eq!(client.has_received_payout(&group_id, &member2), true);
+        assert_eq!(client.has_received_payout(&group_id, &member3), true);
+        
+        // Check a member who hasn't received payout
+        let member4 = Address::generate(&env);
+        assert_eq!(client.has_received_payout(&group_id, &member4), false);
+    }
+
+    #[test]
+    #[should_panic(expected = "Status(ContractError(1001))")] // 1001 is GroupNotFound
+    fn test_has_received_payout_group_not_found() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, StellarSaveContract);
+        let client = StellarSaveContractClient::new(&env, &contract_id);
+        let member = Address::generate(&env);
+
+        // Try to check payout for non-existent group
+        client.has_received_payout(&999, &member);
     }
 
     // #[test]
